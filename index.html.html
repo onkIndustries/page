@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA — Premium Minimalist Image Showcase</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        zinc: {
+                            850: '#121215',
+                            950: '#09090b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom scrollbar for subtle thumbnail strip */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Smooth transition for viewer stage */
+        .stage-image {
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+        }
+
+        /* Backdrop blur ambient dynamic overlay */
+        .bg-blur-ambient {
+            transition: background-image 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-black text-zinc-100 font-sans antialiased min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-zinc-800 selection:text-white">
+
+    <!-- Top Navigation Bar (Shadcn UI Minimalist Header) -->
+    <header class="w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-40 px-4 sm:px-8 py-3.5 flex items-center justify-between">
+        <!-- Brand & Title -->
+        <div class="flex items-center gap-3">
+            <div class="w-7 h-7 rounded-lg bg-zinc-100 text-black flex items-center justify-center font-bold text-xs tracking-wider">
+                <i data-lucide="sparkles" class="w-4 h-4 text-black"></i>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="font-semibold text-sm tracking-tight text-zinc-100">AURA</span>
+                <span class="text-zinc-600 text-xs">/</span>
+                <span class="text-xs text-zinc-400 font-normal">Vault Gallery</span>
+            </div>
+        </div>
+
+        <!-- Center Counter & View Indicator -->
+        <div class="hidden md:flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 px-3 py-1 rounded-full text-xs font-mono text-zinc-400">
+            <span id="counterCurrent" class="text-zinc-100 font-semibold">01</span>
+            <span class="text-zinc-600">/</span>
+            <span id="counterTotal" class="text-zinc-500">05</span>
+        </div>
+
+        <!-- Actions Bar -->
+        <div class="flex items-center gap-2">
+            <!-- Fit Toggle Button -->
+            <button id="fitToggleBtn" onclick="toggleFitMode()" class="h-8 px-2.5 rounded-md border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors text-xs font-medium flex items-center gap-1.5" title="Toggle Image Fit (Contain / Cover)">
+                <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+                <span id="fitModeLabel" class="hidden sm:inline">Contain</span>
+            </button>
+
+            <!-- Fullscreen Button -->
+            <button onclick="toggleFullscreen()" class="h-8 w-8 rounded-md border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors flex items-center justify-center" title="Toggle Fullscreen">
+                <i data-lucide="expand" class="w-3.5 h-3.5"></i>
+            </button>
+
+            <!-- Details Sidebar Toggle -->
+            <button id="infoToggleBtn" onclick="toggleInfoDrawer()" class="h-8 w-8 rounded-md border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors flex items-center justify-center" title="Toggle Metadata Details">
+                <i data-lucide="info" class="w-3.5 h-3.5"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col md:flex-row relative overflow-hidden">
+        
+        <!-- Primary Display Stage (Instagram/Threads Style Stage) -->
+        <div id="viewerStage" class="flex-1 relative flex items-center justify-center bg-black p-2 sm:p-6 min-h-[calc(100vh-160px)] md:min-h-[calc(100vh-130px)] select-none">
+            
+            <!-- Ambient Blurred Background Stage Fill for Aspect Ratio Context -->
+            <div id="ambientBackground" class="absolute inset-0 opacity-20 filter blur-3xl scale-110 pointer-events-none transition-all duration-700 bg-center bg-cover"></div>
+
+            <!-- Previous Navigation Overlay Button -->
+            <button onclick="prevImage()" class="absolute left-3 sm:left-6 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-zinc-900/80 border border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center justify-center shadow-2xl backdrop-blur-md transition-all active:scale-95 group" title="Previous Image (Left Arrow)">
+                <i data-lucide="chevron-left" class="w-5 h-5 group-hover:-translate-x-0.5 transition-transform"></i>
+            </button>
+
+            <!-- Next Navigation Overlay Button -->
+            <button onclick="nextImage()" class="absolute right-3 sm:right-6 z-20 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-zinc-900/80 border border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-800 text-zinc-200 hover:text-white flex items-center justify-center shadow-2xl backdrop-blur-md transition-all active:scale-95 group" title="Next Image (Right Arrow)">
+                <i data-lucide="chevron-right" class="w-5 h-5 group-hover:translate-x-0.5 transition-transform"></i>
+            </button>
+
+            <!-- Center Image Frame Container -->
+            <div class="relative w-full h-full max-w-6xl max-h-[78vh] flex items-center justify-center">
+                
+                <!-- Loading Spinner -->
+                <div id="imageSpinner" class="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10">
+                    <i data-lucide="loader-2" class="w-6 h-6 text-zinc-500 animate-spin"></i>
+                    <span class="text-xs font-mono text-zinc-600">Loading High-Res Master...</span>
+                </div>
+
+                <!-- Complete Full Uncropped Picture Display -->
+                <img 
+                    id="activeImage" 
+                    src="" 
+                    alt="Current Artwork" 
+                    class="stage-image max-w-full max-h-[76vh] w-auto h-auto object-contain rounded-lg border border-zinc-800/80 shadow-2xl z-10"
+                    onload="handleImageLoaded()"
+                    onerror="handleImageError()"
+                />
+            </div>
+
+            <!-- Quick Overlay Info Bar (Mobile / Clean View) -->
+            <div class="absolute bottom-4 left-4 right-4 z-20 pointer-events-none flex justify-center">
+                <div class="glass-pill bg-zinc-950/80 border border-zinc-800/80 px-4 py-2 rounded-full backdrop-blur-md pointer-events-auto flex items-center gap-4 text-xs shadow-xl">
+                    <span id="stageTitle" class="font-medium text-zinc-200 truncate max-w-[180px] sm:max-w-md">Wallhaven Celestial Horizon</span>
+                    <span class="text-zinc-700">|</span>
+                    <button onclick="toggleLike()" class="text-zinc-400 hover:text-rose-500 transition-colors flex items-center gap-1.5">
+                        <i id="likeIcon" data-lucide="heart" class="w-3.5 h-3.5"></i>
+                        <span id="likeCount" class="font-mono text-[11px]">1,240</span>
+                    </button>
+                    <button onclick="copyLink()" class="text-zinc-400 hover:text-zinc-200 transition-colors flex items-center gap-1.5" title="Copy Direct Image Link">
+                        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                        <span class="hidden sm:inline">Copy</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Metadata Side Drawer (Shadcn Accordion Style) -->
+        <aside id="infoDrawer" class="w-full md:w-80 border-t md:border-t-0 md:border-l border-zinc-800/80 bg-zinc-950 p-5 flex flex-col justify-between hidden md:flex transition-all duration-300">
+            <div class="space-y-6">
+                <!-- Drawer Header -->
+                <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                    <h3 class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Asset Details</h3>
+                    <span id="drawerIndexBadge" class="text-[10px] font-mono bg-zinc-900 border border-zinc-800 text-zinc-300 px-2 py-0.5 rounded">ITEM 1 / 5</span>
+                </div>
+
+                <!-- Title & Description -->
+                <div>
+                    <h2 id="drawerTitle" class="text-base font-semibold text-zinc-100 tracking-tight">Ethereal Wallhaven Panorama</h2>
+                    <p id="drawerDesc" class="text-xs text-zinc-400 mt-1.5 leading-relaxed">
+                        High-definition atmospheric digital composition with vibrant gradient palettes and natural surreal landscape elements.
+                    </p>
+                </div>
+
+                <!-- Details Grid -->
+                <div class="space-y-3 pt-2">
+                    <div class="flex items-center justify-between text-xs py-1.5 border-b border-zinc-900">
+                        <span class="text-zinc-500">Source Host</span>
+                        <span id="drawerHost" class="font-mono text-zinc-300">wallhaven.cc</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs py-1.5 border-b border-zinc-900">
+                        <span class="text-zinc-500">Aspect Ratio</span>
+                        <span id="drawerRatio" class="font-mono text-zinc-300">Auto Framed</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs py-1.5 border-b border-zinc-900">
+                        <span class="text-zinc-500">Render Mode</span>
+                        <span class="font-mono text-emerald-400">Complete Picture</span>
+                    </div>
+                </div>
+
+                <!-- Tags -->
+                <div>
+                    <span class="text-xs text-zinc-500 block mb-2">Categories</span>
+                    <div id="drawerTags" class="flex flex-wrap gap-1.5">
+                        <span class="text-[10px] bg-zinc-900 text-zinc-300 border border-zinc-800 px-2.5 py-1 rounded-md">Digital Art</span>
+                        <span class="text-[10px] bg-zinc-900 text-zinc-300 border border-zinc-800 px-2.5 py-1 rounded-md">Wallpaper</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Direct Actions -->
+            <div class="pt-6 border-t border-zinc-800 flex flex-col gap-2">
+                <a id="downloadAnchor" href="#" target="_blank" class="w-full h-9 rounded-md bg-zinc-100 text-black hover:bg-white transition-colors text-xs font-medium flex items-center justify-center gap-2">
+                    <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                    Open Full Resolution
+                </a>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Bottom Thumbnail Carousel Bar -->
+    <footer class="w-full border-t border-zinc-800/80 bg-zinc-950/90 p-3 sm:p-4 z-30">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            
+            <!-- Quick Index Step -->
+            <div class="hidden sm:flex items-center gap-2 text-xs text-zinc-500 font-mono">
+                <i data-lucide="key-round" class="w-3.5 h-3.5 text-zinc-600"></i>
+                <span>Use &larr; &rarr; Arrow Keys</span>
+            </div>
+
+            <!-- Thumbnail Carousel Strip -->
+            <div id="thumbnailStrip" class="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1 px-1 mx-auto sm:mx-0">
+                <!-- Dynamically generated thumbnails -->
+            </div>
+
+            <!-- Counter for Mobile -->
+            <div class="sm:hidden text-xs font-mono text-zinc-400">
+                <span id="mobileCounter">1 / 5</span>
+            </div>
+
+        </div>
+    </footer>
+
+    <!-- Minimal Toast Notification -->
+    <div id="toast" class="fixed bottom-20 right-6 z-50 transform translate-y-12 opacity-0 transition-all duration-200 pointer-events-none">
+        <div class="bg-zinc-900 border border-zinc-800 px-4 py-2.5 rounded-lg shadow-2xl flex items-center gap-2.5 text-xs text-zinc-200">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+            <span id="toastText">Action completed</span>
+        </div>
+    </div>
+
+    <!-- Application Controller Logic -->
+    <script>
+        // Gallery Dataset
+        const galleryData = [
+            {
+                url: "https://w.wallhaven.cc/full/wy/wallhaven-wy92g6.jpg",
+                title: "Wallhaven Celestial Horizon",
+                description: "Vivid cosmic digital illustration curated from Wallhaven.",
+                host: "wallhaven.cc",
+                tags: ["Wallpaper", "Cosmic", "Illustration"],
+                likes: 1842
+            },
+            {
+                url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTaBQleirgzu3HZksqQ4MN1sCR4fOqpRVASgDewwIX1B0Q50OZVHL1NNS4&s=10",
+                title: "Minimalist Aesthetic Composition",
+                description: "Compact stylized graphical piece featuring bold contrasts.",
+                host: "google.com",
+                tags: ["Minimal", "Graphical"],
+                likes: 932
+            },
+            {
+                url: "https://i.redd.it/1d8rry72139c1.jpg",
+                title: "Reddit Community Creation I",
+                description: "High quality photographic study shared on Reddit.",
+                host: "i.redd.it",
+                tags: ["Reddit", "Photography"],
+                likes: 2105
+            },
+            {
+                url: "https://i.redd.it/5fg27nqgwnue1.jpg",
+                title: "Reddit Community Creation II",
+                description: "Atmospheric natural focus capturing unique contrast and color.",
+                host: "i.redd.it",
+                tags: ["Reddit", "Atmospheric"],
+                likes: 1470
+            },
+            {
+                url: "https://kiwi99.space/reddit/coolguy716iscool/mia-melano-in-black-post-by-reddit-nsfw-coolguy716iscool-on-miamelano.jpg",
+                title: "Black Monochrome Portrait Study",
+                description: "Sophisticated dark portrait layout on dark canvas background.",
+                host: "kiwi99.space",
+                tags: ["Portrait", "Monochrome"],
+                likes: 3120
+            }
+        ];
+
+        let currentIndex = 0;
+        let isFitContain = true;
+        let isLikedArray = new Array(galleryData.length).fill(false);
+
+        // Elements
+        const activeImage = document.getElementById('activeImage');
+        const ambientBackground = document.getElementById('ambientBackground');
+        const imageSpinner = document.getElementById('imageSpinner');
+        const counterCurrent = document.getElementById('counterCurrent');
+        const counterTotal = document.getElementById('counterTotal');
+        const mobileCounter = document.getElementById('mobileCounter');
+        const stageTitle = document.getElementById('stageTitle');
+        const likeCount = document.getElementById('likeCount');
+        const thumbnailStrip = document.getElementById('thumbnailStrip');
+        const infoDrawer = document.getElementById('infoDrawer');
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            counterTotal.textContent = String(galleryData.length).padStart(2, '0');
+            renderThumbnails();
+            loadImage(currentIndex);
+            lucide.createIcons();
+        });
+
+        // Load Image Function
+        function loadImage(index) {
+            currentIndex = index;
+            const item = galleryData[currentIndex];
+
+            // Show Loading spinner & fade image out
+            imageSpinner.classList.remove('hidden');
+            activeImage.style.opacity = '0.3';
+
+            // Set sources
+            activeImage.src = item.url;
+            ambientBackground.style.backgroundImage = `url('${item.url}')`;
+
+            // Update Header & Stage text
+            counterCurrent.textContent = String(currentIndex + 1).padStart(2, '0');
+            mobileCounter.textContent = `${currentIndex + 1} / ${galleryData.length}`;
+            stageTitle.textContent = item.title;
+
+            // Update Drawer Info
+            document.getElementById('drawerTitle').textContent = item.title;
+            document.getElementById('drawerDesc').textContent = item.description;
+            document.getElementById('drawerHost').textContent = item.host;
+            document.getElementById('drawerIndexBadge').textContent = `ITEM ${currentIndex + 1} / ${galleryData.length}`;
+            document.getElementById('downloadAnchor').href = item.url;
+
+            // Tags
+            const drawerTags = document.getElementById('drawerTags');
+            drawerTags.innerHTML = item.tags.map(tag => 
+                `<span class="text-[10px] bg-zinc-900 text-zinc-300 border border-zinc-800 px-2.5 py-1 rounded-md">${tag}</span>`
+            ).join('');
+
+            // Like state
+            updateLikeUI();
+
+            // Highlight Active Thumbnail
+            updateThumbnailActiveState();
+        }
+
+        function handleImageLoaded() {
+            imageSpinner.classList.add('hidden');
+            activeImage.style.opacity = '1';
+        }
+
+        function handleImageError() {
+            imageSpinner.classList.add('hidden');
+            activeImage.style.opacity = '1';
+            showToast('Unable to render image source');
+        }
+
+        // Navigation
+        function nextImage() {
+            const nextIdx = (currentIndex + 1) % galleryData.length;
+            loadImage(nextIdx);
+        }
+
+        function prevImage() {
+            const prevIdx = (currentIndex - 1 + galleryData.length) % galleryData.length;
+            loadImage(prevIdx);
+        }
+
+        // Render Thumbnails
+        function renderThumbnails() {
+            thumbnailStrip.innerHTML = '';
+            galleryData.forEach((item, index) => {
+                const thumb = document.createElement('button');
+                thumb.className = `relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden border transition-all flex-shrink-0 group ${
+                    index === currentIndex 
+                        ? 'border-white ring-2 ring-white/20 scale-105' 
+                        : 'border-zinc-800 opacity-60 hover:opacity-100 hover:border-zinc-600'
+                }`;
+                thumb.onclick = () => loadImage(index);
+
+                thumb.innerHTML = `
+                    <img src="${item.url}" alt="${item.title}" class="w-full h-full object-cover" />
+                    <div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+                `;
+                thumbnailStrip.appendChild(thumb);
+            });
+        }
+
+        function updateThumbnailActiveState() {
+            const thumbs = thumbnailStrip.children;
+            Array.from(thumbs).forEach((thumb, idx) => {
+                if (idx === currentIndex) {
+                    thumb.className = 'relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden border border-white ring-2 ring-white/20 scale-105 transition-all flex-shrink-0 group';
+                    thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } else {
+                    thumb.className = 'relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden border border-zinc-800 opacity-60 hover:opacity-100 hover:border-zinc-600 transition-all flex-shrink-0 group';
+                }
+            });
+        }
+
+        // Fit Mode Toggle (Contain vs Cover)
+        function toggleFitMode() {
+            isFitContain = !isFitContain;
+            const fitLabel = document.getElementById('fitModeLabel');
+
+            if (isFitContain) {
+                activeImage.classList.remove('object-cover', 'w-full', 'h-full');
+                activeImage.classList.add('object-contain', 'w-auto', 'h-auto');
+                fitLabel.textContent = 'Contain';
+                showToast('Fit mode: Complete Picture (Contain)');
+            } else {
+                activeImage.classList.remove('object-contain', 'w-auto', 'h-auto');
+                activeImage.classList.add('object-cover', 'w-full', 'h-full');
+                fitLabel.textContent = 'Cover';
+                showToast('Fit mode: Fill Stage (Cover)');
+            }
+        }
+
+        // Fullscreen Toggle
+        function toggleFullscreen() {
+            const stage = document.getElementById('viewerStage');
+            if (!document.fullscreenElement) {
+                if (stage.requestFullscreen) stage.requestFullscreen();
+                showToast('Entered Fullscreen View');
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        // Info Drawer Toggle
+        function toggleInfoDrawer() {
+            infoDrawer.classList.toggle('hidden');
+        }
+
+        // Like Toggle
+        function toggleLike() {
+            isLikedArray[currentIndex] = !isLikedArray[currentIndex];
+            updateLikeUI();
+            showToast(isLikedArray[currentIndex] ? 'Added to liked collection' : 'Removed from collection');
+        }
+
+        function updateLikeUI() {
+            const item = galleryData[currentIndex];
+            const isLiked = isLikedArray[currentIndex];
+            const currentLikes = isLiked ? item.likes + 1 : item.likes;
+            
+            likeCount.textContent = currentLikes.toLocaleString();
+            const likeIcon = document.getElementById('likeIcon');
+            
+            if (isLiked) {
+                likeIcon.setAttribute('class', 'w-3.5 h-3.5 text-rose-500 fill-rose-500');
+            } else {
+                likeIcon.setAttribute('class', 'w-3.5 h-3.5 text-zinc-400');
+            }
+            lucide.createIcons();
+        }
+
+        // Copy Link
+        function copyLink() {
+            const url = galleryData[currentIndex].url;
+            const temp = document.createElement('input');
+            document.body.appendChild(temp);
+            temp.value = url;
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast('Image source copied to clipboard');
+        }
+
+        // Toast Helper
+        let toastTimeout;
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toastText');
+            
+            toastText.textContent = text;
+            toast.classList.remove('translate-y-12', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-12', 'opacity-0');
+            }, 2500);
+        }
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') nextImage();
+            if (e.key === 'ArrowLeft') prevImage();
+            if (e.key === 'f' || e.key === 'F') toggleFitMode();
+        });
+
+        // Touch Swipe Gesture Support for Mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        const stage = document.getElementById('viewerStage');
+        stage.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        stage.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const threshold = 50;
+            if (touchEndX < touchStartX - threshold) {
+                nextImage();
+            } else if (touchEndX > touchStartX + threshold) {
+                prevImage();
+            }
+        }
+    </script>
+</body>
+</html>
